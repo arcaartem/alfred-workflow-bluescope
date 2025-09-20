@@ -1,0 +1,75 @@
+name: Create Alfred Workflow Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on version tags like v1.0.0, v1.2.3, etc.
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Extract version from tag
+      id: version
+      run: |
+        # Remove 'v' prefix from tag to get version number
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Version: $VERSION"
+
+    - name: Update workflow version
+      run: |
+        # Update the version in info.plist
+        sed -i "s/<string>1\.0\.0<\/string>/<string>${VERSION}<\/string>/g" Workflow/info.plist
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+
+    - name: Create Alfred Workflow package
+      run: |
+        # Create the .alfredworkflow file (which is just a zip)
+        cd Workflow
+        zip -r "../BlueScope-${{ steps.version.outputs.version }}.alfredworkflow" . -x "*.DS_Store"
+        cd ..
+
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        # Extract changelog section for this version
+        if [ -f "CHANGELOG.md" ]; then
+          # Try to extract the changelog section for this version
+          awk '/^## \['"${{ steps.version.outputs.version }}"'\]/{flag=1; next} /^## \[/{flag=0} flag' CHANGELOG.md > release_notes.txt
+
+          # If no specific version found, use a generic message
+          if [ ! -s release_notes.txt ]; then
+            echo "## What's New in v${{ steps.version.outputs.version }}" > release_notes.txt
+            echo "" >> release_notes.txt
+            echo "See [CHANGELOG.md](CHANGELOG.md) for detailed changes." >> release_notes.txt
+          fi
+        else
+          echo "## BlueScope v${{ steps.version.outputs.version }}" > release_notes.txt
+          echo "" >> release_notes.txt
+          echo "Discover, connect, and manage Bluetooth devices with ease through Alfred." >> release_notes.txt
+        fi
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        name: BlueScope v${{ steps.version.outputs.version }}
+        body_path: release_notes.txt
+        files: |
+          BlueScope-${{ steps.version.outputs.version }}.alfredworkflow
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload workflow artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: BlueScope-${{ steps.version.outputs.version }}
+        path: BlueScope-${{ steps.version.outputs.version }}.alfredworkflow
+        retention-days: 90
