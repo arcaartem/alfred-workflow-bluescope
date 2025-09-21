@@ -6,26 +6,26 @@
 	<string>com.cobaltforge.alfred.bluescope</string>
 	<key>connections</key>
 	<dict>
-		<key>07e33e1a-cb82-4c48-b49e-ebb187e73740</key>
+		<key>bluetooth-conditional</key>
 		<array>
 			<dict>
 				<key>destinationuid</key>
-				<string>c7ac31c0-fbac-4b81-92b0-dd0317d335ce</string>
+				<string>system-settings-opener</string>
 				<key>modifiers</key>
 				<integer>0</integer>
 				<key>modifiersubtext</key>
 				<string></string>
 				<key>sourceoutputuid</key>
-				<string>f4d59091-1db2-42c7-a68f-27114f744bdc</string>
+				<string>open-settings-path</string>
 				<key>vitoclose</key>
 				<false/>
 			</dict>
 		</array>
-		<key>284551ae-04d3-467a-b60f-d750e252f7d5</key>
+		<key>bluetooth-power-toggle</key>
 		<array>
 			<dict>
 				<key>destinationuid</key>
-				<string>07e33e1a-cb82-4c48-b49e-ebb187e73740</string>
+				<string>bluetooth-conditional</string>
 				<key>modifiers</key>
 				<integer>0</integer>
 				<key>modifiersubtext</key>
@@ -35,7 +35,7 @@
 			</dict>
 			<dict>
 				<key>destinationuid</key>
-				<string>027795b1-6b31-4f66-b7f7-c9463a6fe3d6</string>
+				<string>power-script-executor</string>
 				<key>modifiers</key>
 				<integer>0</integer>
 				<key>modifiersubtext</key>
@@ -44,11 +44,11 @@
 				<false/>
 			</dict>
 		</array>
-		<key>5f2796bf-8712-4fd7-9b7e-55457b56c1a9</key>
+		<key>device-list-filter</key>
 		<array>
 			<dict>
 				<key>destinationuid</key>
-				<string>9f11b779-62ab-48db-a420-deb01b32c46b</string>
+				<string>connection-toggle-script</string>
 				<key>modifiers</key>
 				<integer>0</integer>
 				<key>modifiersubtext</key>
@@ -58,7 +58,7 @@
 			</dict>
 			<dict>
 				<key>destinationuid</key>
-				<string>07e33e1a-cb82-4c48-b49e-ebb187e73740</string>
+				<string>bluetooth-conditional</string>
 				<key>modifiers</key>
 				<integer>0</integer>
 				<key>modifiersubtext</key>
@@ -86,9 +86,20 @@
 				<key>escaping</key>
 				<integer>102</integer>
 				<key>script</key>
-				<string>readonly address="${1}"
+				<string>const deviceAddress = "${1}";
 
-[[ "${connected}" == '1' ]] &amp;&amp; blueutil --disconnect "${address}" --wait-disconnect "${address}" || blueutil --connect "${address}" --wait-connect "${address}"</string>
+if ("${connected}" === '1') {
+    runShellCommand("blueutil", ["--disconnect", deviceAddress, "--wait-disconnect", deviceAddress]);
+} else {
+    runShellCommand("blueutil", ["--connect", deviceAddress, "--wait-connect", deviceAddress]);
+}
+
+function runShellCommand(command, args) {
+    const task = $.NSTask.alloc.init;
+    task.executableURL = $.NSURL.fileURLWithPath("/usr/bin/env");
+    task.arguments = [command].concat(args);
+    task.launchAndReturnError(false);
+}</string>
 				<key>scriptargtype</key>
 				<integer>1</integer>
 				<key>scriptfile</key>
@@ -99,7 +110,7 @@
 			<key>type</key>
 			<string>alfred.workflow.action.script</string>
 			<key>uid</key>
-			<string>9f11b779-62ab-48db-a420-deb01b32c46b</string>
+			<string>connection-toggle-script</string>
 			<key>version</key>
 			<integer>2</integer>
 		</dict>
@@ -131,66 +142,63 @@
 				<key>runningsubtext</key>
 				<string>Gathering device information…</string>
 				<key>script</key>
-				<string>// Utilities
-function runCommand(...args) {
-  const task = $.NSTask.alloc.init
-  const stdout = $.NSPipe.pipe
+				<string>function executeCommand(...commandArgs) {
+  const taskRunner = $.NSTask.alloc.init;
+  const outputPipe = $.NSPipe.pipe;
 
-  task.executableURL = $.NSURL.fileURLWithPath("/usr/bin/env")
-  task.arguments = args
-  task.standardOutput = stdout
-  task.launchAndReturnError(false)
+  taskRunner.executableURL = $.NSURL.fileURLWithPath("/usr/bin/env");
+  taskRunner.arguments = commandArgs;
+  taskRunner.standardOutput = outputPipe;
+  taskRunner.launchAndReturnError(false);
 
-  const data = stdout.fileHandleForReading.readDataToEndOfFileAndReturnError(false)
-  const output = $.NSString.alloc.initWithDataEncoding(data, $.NSUTF8StringEncoding).js
+  const resultData = outputPipe.fileHandleForReading.readDataToEndOfFileAndReturnError(false);
+  const resultString = $.NSString.alloc.initWithDataEncoding(resultData, $.NSUTF8StringEncoding).js;
 
-  return { stdout: output, exitCode: task.terminationStatus }
+  return { output: resultString, status: taskRunner.terminationStatus };
 }
 
-function createError(title, subtitle) {
+function buildErrorResult(errorTitle, errorSubtitle) {
   return JSON.stringify({
-    items: [{ title, subtitle, icon: { path: "icon_alt.png" }, valid: false }]
-  })
+    items: [{ title: errorTitle, subtitle: errorSubtitle, icon: { path: "icon_alt.png" }, valid: false }]
+  });
 }
 
-function checkBlueutil() {
-  const result = runCommand("which", "blueutil")
-  return result.exitCode === 0 ? null : createError("blueutil not found", "Install blueutil via: brew install blueutil")
+function validateBlueutil() {
+  const checkResult = executeCommand("which", "blueutil");
+  return checkResult.status === 0 ? null : buildErrorResult("blueutil not found", "Install blueutil via: brew install blueutil");
 }
 
 function run() {
-  // Check if blueutil is available
-  const blueUtilError = checkBlueutil()
-  if (blueUtilError) return blueUtilError
+  const validationError = validateBlueutil();
+  if (validationError) return validationError;
 
-  // Get paired devices
-  const pairedResult = runCommand("blueutil", "--format", "json", "--paired")
-  if (pairedResult.exitCode !== 0) {
-    return createError("Error accessing Bluetooth", "Check Bluetooth permissions in System Settings")
+  const deviceQuery = executeCommand("blueutil", "--format", "json", "--paired");
+  if (deviceQuery.status !== 0) {
+    return buildErrorResult("Error accessing Bluetooth", "Check Bluetooth permissions in System Settings");
   }
 
-  let pairedDevices
+  let deviceList;
   try {
-    pairedDevices = JSON.parse(pairedResult.stdout)
-  } catch (error) {
-    return createError("Error parsing Bluetooth data", "Please try again or check blueutil installation")
+    deviceList = JSON.parse(deviceQuery.output);
+  } catch (parseError) {
+    return buildErrorResult("Error parsing Bluetooth data", "Please try again or check blueutil installation");
   }
 
-  if (pairedDevices.length === 0) {
-    return createError("No paired devices found", "Pair a device in System Settings to get started")
+  if (deviceList.length === 0) {
+    return buildErrorResult("No paired devices found", "Pair a device in System Settings to get started");
   }
 
-  const deviceCount = pairedDevices.length
-  const items = pairedDevices.map(device =&gt; ({
+  const totalDevices = deviceList.length;
+  const resultItems = deviceList.map(device =&gt; ({
     variables: { connected: device.connected },
     uid: device.address,
     title: device.name,
-    subtitle: `${device.connected ? "Connected" : "Not Connected"} • ${deviceCount} paired device${deviceCount === 1 ? '' : 's'}`,
+    subtitle: `${device.connected ? "Connected" : "Not Connected"} • ${totalDevices} paired device${totalDevices === 1 ? '' : 's'}`,
     arg: device.address,
     icon: { path: device.connected ? "icon.png" : "icon_alt.png" }
-  }))
+  }));
 
-  return JSON.stringify({ rerun: 0.5, items })
+  return JSON.stringify({ rerun: 0.5, items: resultItems });
 }</string>
 				<key>scriptargtype</key>
 				<integer>1</integer>
@@ -210,7 +218,7 @@ function run() {
 			<key>type</key>
 			<string>alfred.workflow.input.scriptfilter</string>
 			<key>uid</key>
-			<string>5f2796bf-8712-4fd7-9b7e-55457b56c1a9</string>
+			<string>device-list-filter</string>
 			<key>version</key>
 			<integer>3</integer>
 		</dict>
@@ -231,7 +239,7 @@ function run() {
 			<key>type</key>
 			<string>alfred.workflow.action.openurl</string>
 			<key>uid</key>
-			<string>c7ac31c0-fbac-4b81-92b0-dd0317d335ce</string>
+			<string>system-settings-opener</string>
 			<key>version</key>
 			<integer>1</integer>
 		</dict>
@@ -252,7 +260,7 @@ function run() {
 						<key>outputlabel</key>
 						<string>Open System Settings</string>
 						<key>uid</key>
-						<string>f4d59091-1db2-42c7-a68f-27114f744bdc</string>
+						<string>open-settings-path</string>
 					</dict>
 				</array>
 				<key>elselabel</key>
@@ -263,7 +271,7 @@ function run() {
 			<key>type</key>
 			<string>alfred.workflow.utility.conditional</string>
 			<key>uid</key>
-			<string>07e33e1a-cb82-4c48-b49e-ebb187e73740</string>
+			<string>bluetooth-conditional</string>
 			<key>version</key>
 			<integer>1</integer>
 		</dict>
@@ -295,54 +303,51 @@ function run() {
 				<key>runningsubtext</key>
 				<string>Gathering Bluetooth status…</string>
 				<key>script</key>
-				<string>// Utilities
-function runCommand(...args) {
-  const task = $.NSTask.alloc.init
-  const stdout = $.NSPipe.pipe
+				<string>function executeShell(...commandArgs) {
+  const taskInstance = $.NSTask.alloc.init;
+  const outputStream = $.NSPipe.pipe;
 
-  task.executableURL = $.NSURL.fileURLWithPath("/usr/bin/env")
-  task.arguments = args
-  task.standardOutput = stdout
-  task.launchAndReturnError(false)
+  taskInstance.executableURL = $.NSURL.fileURLWithPath("/usr/bin/env");
+  taskInstance.arguments = commandArgs;
+  taskInstance.standardOutput = outputStream;
+  taskInstance.launchAndReturnError(false);
 
-  const data = stdout.fileHandleForReading.readDataToEndOfFileAndReturnError(false)
-  const output = $.NSString.alloc.initWithDataEncoding(data, $.NSUTF8StringEncoding).js
+  const outputData = outputStream.fileHandleForReading.readDataToEndOfFileAndReturnError(false);
+  const outputText = $.NSString.alloc.initWithDataEncoding(outputData, $.NSUTF8StringEncoding).js;
 
-  return { stdout: output, exitCode: task.terminationStatus }
+  return { output: outputText, exitStatus: taskInstance.terminationStatus };
 }
 
-function createError(title, subtitle) {
+function generateErrorMessage(title, subtitle) {
   return JSON.stringify({
     items: [{ title, subtitle, icon: { path: "icon_alt.png" }, valid: false }]
-  })
+  });
 }
 
-function checkBlueutil() {
-  const result = runCommand("which", "blueutil")
-  return result.exitCode === 0 ? null : createError("blueutil not found", "Install blueutil via: brew install blueutil")
+function verifyBlueutil() {
+  const verificationResult = executeShell("which", "blueutil");
+  return verificationResult.exitStatus === 0 ? null : generateErrorMessage("blueutil not found", "Install blueutil via: brew install blueutil");
 }
 
 function run() {
-  // Check if blueutil is available
-  const blueUtilError = checkBlueutil()
-  if (blueUtilError) return blueUtilError
+  const utilityCheck = verifyBlueutil();
+  if (utilityCheck) return utilityCheck;
 
-  // Get Bluetooth power state
-  const powerResult = runCommand("blueutil", "--power")
-  if (powerResult.exitCode !== 0) {
-    return createError("Error accessing Bluetooth", "Check Bluetooth permissions in System Settings")
+  const powerQuery = executeShell("blueutil", "--power");
+  if (powerQuery.exitStatus !== 0) {
+    return generateErrorMessage("Error accessing Bluetooth", "Check Bluetooth permissions in System Settings");
   }
 
-  const isOn = parseInt(powerResult.stdout) === 1
+  const bluetoothEnabled = parseInt(powerQuery.output) === 1;
 
   return JSON.stringify({
     items: [{
-      title: `Bluetooth is ${isOn ? "On" : "Off"}`,
-      subtitle: `Action to turn it ${isOn ? "off" : "on"}`,
-      arg: isOn ? "off" : "on",
-      icon: { path: isOn ? "icon.png" : "icon_alt.png" }
+      title: `Bluetooth is ${bluetoothEnabled ? "On" : "Off"}`,
+      subtitle: `Action to turn it ${bluetoothEnabled ? "off" : "on"}`,
+      arg: bluetoothEnabled ? "off" : "on",
+      icon: { path: bluetoothEnabled ? "icon.png" : "icon_alt.png" }
     }]
-  })
+  });
 }</string>
 				<key>scriptargtype</key>
 				<integer>1</integer>
@@ -362,7 +367,7 @@ function run() {
 			<key>type</key>
 			<string>alfred.workflow.input.scriptfilter</string>
 			<key>uid</key>
-			<string>284551ae-04d3-467a-b60f-d750e252f7d5</string>
+			<string>bluetooth-power-toggle</string>
 			<key>version</key>
 			<integer>3</integer>
 		</dict>
@@ -385,7 +390,7 @@ function run() {
 			<key>type</key>
 			<string>alfred.workflow.action.script</string>
 			<key>uid</key>
-			<string>027795b1-6b31-4f66-b7f7-c9463a6fe3d6</string>
+			<string>power-script-executor</string>
 			<key>version</key>
 			<integer>2</integer>
 		</dict>
@@ -394,6 +399,8 @@ function run() {
 	<string>## BlueScope - Bluetooth Device Manager
 
 Discover, connect, and manage Bluetooth devices with ease through Alfred.
+
+*Inspired by the excellent Dente Azul workflow. This workflow was created because Dente Azul stopped working for the developer's setup.*
 
 ### Requirements
 
@@ -433,42 +440,42 @@ Customize keywords in workflow settings:
 [📖 Full Documentation](https://github.com/cobalt-forge/alfred-workflow-bluescope)</string>
 	<key>uidata</key>
 	<dict>
-		<key>027795b1-6b31-4f66-b7f7-c9463a6fe3d6</key>
-		<dict>
-			<key>xpos</key>
-			<real>310</real>
-			<key>ypos</key>
-			<real>360</real>
-		</dict>
-		<key>07e33e1a-cb82-4c48-b49e-ebb187e73740</key>
+		<key>bluetooth-conditional</key>
 		<dict>
 			<key>xpos</key>
 			<real>350</real>
 			<key>ypos</key>
 			<real>240</real>
 		</dict>
-		<key>284551ae-04d3-467a-b60f-d750e252f7d5</key>
+		<key>bluetooth-power-toggle</key>
 		<dict>
 			<key>xpos</key>
 			<real>80</real>
 			<key>ypos</key>
 			<real>360</real>
 		</dict>
-		<key>5f2796bf-8712-4fd7-9b7e-55457b56c1a9</key>
-		<dict>
-			<key>xpos</key>
-			<real>80</real>
-			<key>ypos</key>
-			<real>60</real>
-		</dict>
-		<key>9f11b779-62ab-48db-a420-deb01b32c46b</key>
+		<key>connection-toggle-script</key>
 		<dict>
 			<key>xpos</key>
 			<real>310</real>
 			<key>ypos</key>
 			<real>60</real>
 		</dict>
-		<key>c7ac31c0-fbac-4b81-92b0-dd0317d335ce</key>
+		<key>device-list-filter</key>
+		<dict>
+			<key>xpos</key>
+			<real>80</real>
+			<key>ypos</key>
+			<real>60</real>
+		</dict>
+		<key>power-script-executor</key>
+		<dict>
+			<key>xpos</key>
+			<real>310</real>
+			<key>ypos</key>
+			<real>360</real>
+		</dict>
+		<key>system-settings-opener</key>
 		<dict>
 			<key>xpos</key>
 			<real>475</real>
@@ -526,8 +533,6 @@ Customize keywords in workflow settings:
 		<key>BLUEUTIL_USE_SYSTEM_PROFILER</key>
 		<string>1</string>
 	</dict>
-	<key>variablesdontexport</key>
-	<array/>
 	<key>version</key>
 	<string>1.0.0</string>
 	<key>webaddress</key>
