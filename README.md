@@ -31,3 +31,6 @@ Configure the trigger keywords in the Workflow's Configuration:
 
 - **Device Toggle Keyword** (default: `btd`)
 - **Bluetooth Power Keyword** (default: `btt`)
+
+
+Inspired by Vítor Galvão's excellent [Dente Azul](https://alfred.app/workflows/vitor/dente-azul/) workflow
