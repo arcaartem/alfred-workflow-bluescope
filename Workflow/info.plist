@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>bundleid</key>
-	<string>com.cobaltforge.alfred.bluescope</string>
+	<string>com.arcaartem.alfred.bluescope</string>
 	<key>connections</key>
 	<dict>
 		<key>bluetooth-conditional</key>
@@ -437,7 +437,7 @@ Customize keywords in workflow settings:
 **"Error accessing Bluetooth"** → Grant Alfred Bluetooth permissions in System Settings
 **No devices showing** → Pair devices in System Settings first
 
-[📖 Full Documentation](https://github.com/cobalt-forge/alfred-workflow-bluescope)</string>
+[📖 Full Documentation](https://github.com/arcaartem/alfred-workflow-bluescope)</string>
 	<key>uidata</key>
 	<dict>
 		<key>bluetooth-conditional</key>
@@ -536,6 +536,6 @@ Customize keywords in workflow settings:
 	<key>version</key>
 	<string>1.0.0</string>
 	<key>webaddress</key>
-	<string>https://github.com/cobalt-forge/alfred-workflow-bluescope</string>
+	<string>https://github.com/arcaartem/alfred-workflow-bluescope</string>
 </dict>
 </plist>
