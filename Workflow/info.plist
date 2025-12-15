@@ -86,26 +86,22 @@
 				<key>escaping</key>
 				<integer>102</integer>
 				<key>script</key>
-				<string>const deviceAddress = "${1}";
-
-if ("${connected}" === '1') {
-    runShellCommand("blueutil", ["--disconnect", deviceAddress, "--wait-disconnect", deviceAddress]);
-} else {
-    runShellCommand("blueutil", ["--connect", deviceAddress, "--wait-connect", deviceAddress]);
-}
-
-function runShellCommand(command, args) {
-    const task = $.NSTask.alloc.init;
-    task.executableURL = $.NSURL.fileURLWithPath("/usr/bin/env");
-    task.arguments = [command].concat(args);
-    task.launchAndReturnError(false);
+				<string>var script = $.NSString.stringWithContentsOfFileEncodingError("scripts/bluescope.js", $.NSUTF8StringEncoding, null).js;
+eval(script);
+function run(argv) {
+  var connected = getEnv("connected");
+  debug("=== Toggle Connection Wrapper ===");
+  debug("argv[0]: " + argv[0]);
+  debug("connected env var: " + connected);
+  debug("comparison result: " + (connected === "1"));
+  return toggleConnection(argv[0], connected === "1");
 }</string>
 				<key>scriptargtype</key>
 				<integer>1</integer>
 				<key>scriptfile</key>
 				<string></string>
 				<key>type</key>
-				<integer>11</integer>
+				<integer>7</integer>
 			</dict>
 			<key>type</key>
 			<string>alfred.workflow.action.script</string>
@@ -142,64 +138,9 @@ function runShellCommand(command, args) {
 				<key>runningsubtext</key>
 				<string>Gathering device information…</string>
 				<key>script</key>
-				<string>function executeCommand(...commandArgs) {
-  const taskRunner = $.NSTask.alloc.init;
-  const outputPipe = $.NSPipe.pipe;
-
-  taskRunner.executableURL = $.NSURL.fileURLWithPath("/usr/bin/env");
-  taskRunner.arguments = commandArgs;
-  taskRunner.standardOutput = outputPipe;
-  taskRunner.launchAndReturnError(false);
-
-  const resultData = outputPipe.fileHandleForReading.readDataToEndOfFileAndReturnError(false);
-  const resultString = $.NSString.alloc.initWithDataEncoding(resultData, $.NSUTF8StringEncoding).js;
-
-  return { output: resultString, status: taskRunner.terminationStatus };
-}
-
-function buildErrorResult(errorTitle, errorSubtitle) {
-  return JSON.stringify({
-    items: [{ title: errorTitle, subtitle: errorSubtitle, icon: { path: "icon_alt.png" }, valid: false }]
-  });
-}
-
-function validateBlueutil() {
-  const checkResult = executeCommand("which", "blueutil");
-  return checkResult.status === 0 ? null : buildErrorResult("blueutil not found", "Install blueutil via: brew install blueutil");
-}
-
-function run() {
-  const validationError = validateBlueutil();
-  if (validationError) return validationError;
-
-  const deviceQuery = executeCommand("blueutil", "--format", "json", "--paired");
-  if (deviceQuery.status !== 0) {
-    return buildErrorResult("Error accessing Bluetooth", "Check Bluetooth permissions in System Settings");
-  }
-
-  let deviceList;
-  try {
-    deviceList = JSON.parse(deviceQuery.output);
-  } catch (parseError) {
-    return buildErrorResult("Error parsing Bluetooth data", "Please try again or check blueutil installation");
-  }
-
-  if (deviceList.length === 0) {
-    return buildErrorResult("No paired devices found", "Pair a device in System Settings to get started");
-  }
-
-  const totalDevices = deviceList.length;
-  const resultItems = deviceList.map(device =&gt; ({
-    variables: { connected: device.connected },
-    uid: device.address,
-    title: device.name,
-    subtitle: `${device.connected ? "Connected" : "Not Connected"} • ${totalDevices} paired device${totalDevices === 1 ? '' : 's'}`,
-    arg: device.address,
-    icon: { path: device.connected ? "icon.png" : "icon_alt.png" }
-  }));
-
-  return JSON.stringify({ rerun: 0.5, items: resultItems });
-}</string>
+				<string>var script = $.NSString.stringWithContentsOfFileEncodingError("scripts/bluescope.js", $.NSUTF8StringEncoding, null).js;
+eval(script);
+function run() { return listDevices(); }</string>
 				<key>scriptargtype</key>
 				<integer>1</integer>
 				<key>scriptfile</key>
@@ -303,52 +244,9 @@ function run() {
 				<key>runningsubtext</key>
 				<string>Gathering Bluetooth status…</string>
 				<key>script</key>
-				<string>function executeShell(...commandArgs) {
-  const taskInstance = $.NSTask.alloc.init;
-  const outputStream = $.NSPipe.pipe;
-
-  taskInstance.executableURL = $.NSURL.fileURLWithPath("/usr/bin/env");
-  taskInstance.arguments = commandArgs;
-  taskInstance.standardOutput = outputStream;
-  taskInstance.launchAndReturnError(false);
-
-  const outputData = outputStream.fileHandleForReading.readDataToEndOfFileAndReturnError(false);
-  const outputText = $.NSString.alloc.initWithDataEncoding(outputData, $.NSUTF8StringEncoding).js;
-
-  return { output: outputText, exitStatus: taskInstance.terminationStatus };
-}
-
-function generateErrorMessage(title, subtitle) {
-  return JSON.stringify({
-    items: [{ title, subtitle, icon: { path: "icon_alt.png" }, valid: false }]
-  });
-}
-
-function verifyBlueutil() {
-  const verificationResult = executeShell("which", "blueutil");
-  return verificationResult.exitStatus === 0 ? null : generateErrorMessage("blueutil not found", "Install blueutil via: brew install blueutil");
-}
-
-function run() {
-  const utilityCheck = verifyBlueutil();
-  if (utilityCheck) return utilityCheck;
-
-  const powerQuery = executeShell("blueutil", "--power");
-  if (powerQuery.exitStatus !== 0) {
-    return generateErrorMessage("Error accessing Bluetooth", "Check Bluetooth permissions in System Settings");
-  }
-
-  const bluetoothEnabled = parseInt(powerQuery.output) === 1;
-
-  return JSON.stringify({
-    items: [{
-      title: `Bluetooth is ${bluetoothEnabled ? "On" : "Off"}`,
-      subtitle: `Action to turn it ${bluetoothEnabled ? "off" : "on"}`,
-      arg: bluetoothEnabled ? "off" : "on",
-      icon: { path: bluetoothEnabled ? "icon.png" : "icon_alt.png" }
-    }]
-  });
-}</string>
+				<string>var script = $.NSString.stringWithContentsOfFileEncodingError("scripts/bluescope.js", $.NSUTF8StringEncoding, null).js;
+eval(script);
+function run() { return powerStatus(); }</string>
 				<key>scriptargtype</key>
 				<integer>1</integer>
 				<key>scriptfile</key>
@@ -379,13 +277,15 @@ function run() {
 				<key>escaping</key>
 				<integer>68</integer>
 				<key>script</key>
-				<string>blueutil --power "${1}"</string>
+				<string>var script = $.NSString.stringWithContentsOfFileEncodingError("scripts/bluescope.js", $.NSUTF8StringEncoding, null).js;
+eval(script);
+function run(argv) { return setPower(argv[0]); }</string>
 				<key>scriptargtype</key>
 				<integer>1</integer>
 				<key>scriptfile</key>
 				<string></string>
 				<key>type</key>
-				<integer>5</integer>
+				<integer>7</integer>
 			</dict>
 			<key>type</key>
 			<string>alfred.workflow.action.script</string>
@@ -534,7 +434,7 @@ Customize keywords in workflow settings:
 		<string>1</string>
 	</dict>
 	<key>version</key>
-	<string>1.0.0</string>
+	<string>1.0.1</string>
 	<key>webaddress</key>
 	<string>https://github.com/arcaartem/alfred-workflow-bluescope</string>
 </dict>
