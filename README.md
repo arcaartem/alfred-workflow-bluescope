@@ -1,36 +1,31 @@
 # <img src='Workflow/icon.png' width='45' align='center' alt='icon'> BlueScope
 
-## Usage
-
-Search your paired Bluetooth devices and toggle their connection status via the `btd` keyword.
-
-![Connect or disconnect devices](Workflow/images/about/btd.png)
-
-* <kbd>↩︎</kbd> Toggle device connection
-
-Alternatively, toggle Bluetooth power system-wide via the `btt` keyword.
-
-![Connect or disconnect Bluetooth](Workflow/images/about/btt.png)
-
-* <kbd>↩︎</kbd> Turn Bluetooth on or off
-
 ## Setup
 
-This workflow requires [blueutil](https://github.com/toy/blueutil) to be installed on your system.
+This workflow requires [blueutil](https://github.com/toy/blueutil). Install via [Homebrew](https://brew.sh):
 
-Install via Homebrew:
-```bash
+```
 brew install blueutil
 ```
 
-Grant Alfred Bluetooth permissions in **System Settings** > **Privacy & Security** > **Bluetooth**.
+Grant Alfred Bluetooth permissions in **System Settings** › **Privacy & Security** › **Bluetooth**.
 
-## Configuration
+## Usage
 
-Configure the trigger keywords in the Workflow's Configuration:
+Search paired Bluetooth devices and toggle their connection via the `btd` keyword.
 
-- **Device Toggle Keyword** (default: `btd`)
-- **Bluetooth Power Keyword** (default: `btt`)
+![Searching paired Bluetooth devices](Workflow/images/about/btd.png)
 
+* <kbd>↩︎</kbd> Toggle device connection.
 
-Inspired by Vítor Galvão's excellent [Dente Azul](https://alfred.app/workflows/vitor/dente-azul/) workflow
+The device list refreshes automatically, reflecting connection changes in real time.
+
+Alternatively, toggle Bluetooth power system-wide via the `btt` keyword.
+
+![Toggling Bluetooth power](Workflow/images/about/btt.png)
+
+* <kbd>↩︎</kbd> Turn Bluetooth on or off.
+
+Configure the trigger keywords in the Workflow's Configuration.
+
+Inspired by Vítor Galvão's excellent [Dente Azul](https://alfred.app/workflows/vitor/dente-azul/) workflow.

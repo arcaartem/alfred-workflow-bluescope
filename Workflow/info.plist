@@ -434,7 +434,7 @@ Customize keywords in workflow settings:
 		<string>1</string>
 	</dict>
 	<key>version</key>
-	<string>1.0.1</string>
+	<string>1.0.2</string>
 	<key>webaddress</key>
 	<string>https://github.com/arcaartem/alfred-workflow-bluescope</string>
 </dict>
